@@ -87,6 +87,8 @@ public class PlayFabAuthManager : MonoBehaviour
             messageText.color = Color.green;
         }
         Debug.Log("Successful login! Player ID: " + result.PlayFabId);
+
+        PlayFabInventoryManager.Instance.GetCatalogAndInventory();
     }
 
     private void OnError(PlayFabError error)
