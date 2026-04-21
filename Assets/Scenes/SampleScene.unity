@@ -2204,6 +2204,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1740628546}
   - component: {fileID: 1740628545}
+  - component: {fileID: 1740628547}
   m_Layer: 0
   m_Name: AuthManager
   m_TagString: Untagged
@@ -2242,6 +2243,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1740628547
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1740628544}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b12989e85922a241aa9a9330f49acdc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayFabInventoryManager
+  ownedCards: []
+  visualDatabase: []
 --- !u!1 &1802547393
 GameObject:
   m_ObjectHideFlags: 0
