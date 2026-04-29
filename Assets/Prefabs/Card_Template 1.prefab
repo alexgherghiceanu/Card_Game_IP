@@ -713,6 +713,8 @@ GameObject:
   - component: {fileID: 2142041663188872056}
   - component: {fileID: 2859984893408544218}
   - component: {fileID: 6886573746073454772}
+  - component: {fileID: -4017983031469593545}
+  - component: {fileID: 4463562892892634235}
   m_Layer: 5
   m_Name: Card_Template 1
   m_TagString: Untagged
@@ -800,6 +802,31 @@ MonoBehaviour:
   hpText: {fileID: 7877970724708602529}
   flavorText: {fileID: 3084186789937312867}
   artworkImage: {fileID: 3112801402430067224}
+--- !u!114 &-4017983031469593545
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8946059117604548893}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45fff91f28ebd5f42989c13697e7a283, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CardDragNDrop
+  parentAfterDrag: {fileID: 0}
+--- !u!225 &4463562892892634235
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8946059117604548893}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &9152760927026516581
 GameObject:
   m_ObjectHideFlags: 0
