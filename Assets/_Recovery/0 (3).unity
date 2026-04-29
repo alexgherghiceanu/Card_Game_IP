@@ -315,7 +315,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1184319173}
-  - component: {fileID: 1184319174}
   m_Layer: 0
   m_Name: GameManager_Local
   m_TagString: Untagged
@@ -338,20 +337,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1184319174
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1184319172}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 082b46bba0b04494a9e64eded8a684eb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DatabaseManager
-  allCardsInGame:
-  - {fileID: 11400000, guid: 75ffba3f2827ed545bccb0d62dbc6587, type: 2}
 --- !u!1 &1291607298
 GameObject:
   m_ObjectHideFlags: 0
@@ -530,11 +515,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 223451087117593228, guid: 082355d40e8bbd0418513d895a707170, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -1.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 223451087117593228, guid: 082355d40e8bbd0418513d895a707170, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 9.4
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 1721384103701135375, guid: 082355d40e8bbd0418513d895a707170, type: 3}
       propertyPath: m_Pivot.x
