@@ -11,6 +11,7 @@ public class CardDisplay : MonoBehaviour
     public TextMeshProUGUI nameText;
     public TextMeshProUGUI attackText;
     public TextMeshProUGUI hpText;
+    public TextMeshProUGUI flavorText;
     public Image artworkImage;
 
     // Această funcție ia datele și le lipește pe ecran
@@ -27,6 +28,12 @@ public class CardDisplay : MonoBehaviour
             {
                 artworkImage.sprite = card.artwork;
             }
+
+            if(card.flavorText != null)
+            {
+                flavorText.text = card.flavorText;
+            }
+
         }
     }
 

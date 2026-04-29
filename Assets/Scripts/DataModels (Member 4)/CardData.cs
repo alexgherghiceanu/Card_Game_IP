@@ -10,6 +10,7 @@ public class CardData : ScriptableObject
     public int hp;
     public string cardClass;
 
+    [TextArea(3, 10)]
     public string flavorText;
     public Sprite artwork;  
 }
