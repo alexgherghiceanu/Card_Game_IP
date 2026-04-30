@@ -1,38 +1,90 @@
 using System.Collections.Generic;
 using UnityEngine;
+using PlayFab;
+using PlayFab.ClientModels; // Obligatoriu pentru PlayFab
 
 public class HandManager : MonoBehaviour
 {
     [Header("Referinte Componente")]
-    public GameObject cardPrefab;      // Aici vei trage Card_Template-ul tau
-    public Transform handArea;         // Aici vei trage obiectul HandArea (cel cu Horizontal Layout Group)
-
-    [Header("Baza de Date de Test")]
-    public List<CardData> cardsToSpawn; // O lista in care poti pune ce carti vrei sa apara la inceput
+    public GameObject cardPrefab;      
+    public Transform handArea;         
 
     void Start()
     {
-        // La inceputul jocului, generam cartile din lista
-        SpawnHand();
+        // În loc să generăm direct, cerem cărțile de la PlayFab
+        GetCardsFromPlayFab();
     }
 
-    public void SpawnHand()
+    // --- PARTEA 1: CEREM DATELE DE LA SERVER ---
+    public void GetCardsFromPlayFab()
     {
-        foreach (CardData data in cardsToSpawn)
+        Debug.Log("Cerem inventarul de la PlayFab...");
+        
+        GetUserInventoryRequest request = new GetUserInventoryRequest();
+        PlayFabClientAPI.GetUserInventory(request, OnInventorySuccess, OnError);
+    }
+
+    private void OnInventorySuccess(GetUserInventoryResult result)
+    {
+        Debug.Log("Am primit cărțile de la PlayFab!");
+        
+        List<string> cardIdsFromDatabase = new List<string>();
+
+        // Trecem prin fiecare item din inventarul jucătorului de pe server
+        foreach (ItemInstance item in result.Inventory)
         {
-            // 1. Cream o copie a prefab-ului in interiorul HandArea
-            GameObject newCard = Instantiate(cardPrefab, handArea);
+            // Salvăm numele item-ului (ex: "ArmoredSeaLion")
+            cardIdsFromDatabase.Add(item.ItemId);
+            Debug.Log("Carte găsită pe server: " + item.ItemId);
+        }
 
-            // 2. Accesam scriptul CardDisplay de pe noua carte
-            CardDisplay display = newCard.GetComponent<CardDisplay>();
+        // Acum că avem ID-urile, generăm cărțile fizice
+        SpawnHand(cardIdsFromDatabase);
+    }
 
-            if (display != null)
+    private void OnError(PlayFabError error)
+    {
+        Debug.LogError("Eroare la PlayFab: " + error.GenerateErrorReport());
+    }
+
+    // --- PARTEA 2: GENERĂM CĂRȚILE ÎN UNITY ---
+    public void SpawnHand(List<string> cardIdsFromPlayFab)
+    {
+        // 1. Încărcăm absolut TOATE cărțile din folderul "Resources/Cards" în memorie
+        // (Asigură-te că toate ScriptableObjects-urile tale sunt în acel folder!)
+        CardData[] allCardsInGame = Resources.LoadAll<CardData>("Cards");
+
+        // 2. Trecem prin fiecare ID primit de la PlayFab
+        foreach (string playFabId in cardIdsFromPlayFab)
+        {
+            CardData carteGasita = null;
+
+            // 3. Căutăm în baza noastră de date locală cartea cu ID-ul potrivit
+            foreach (CardData data in allCardsInGame)
             {
-                // 3. Ii dam datele specifice (ex: Armored Sea Lion)
-                display.card = data;
+                // ATENȚIE: Înlocuiește "cardID" cu numele exact al variabilei tale din CardData.cs
+                if (data.cardID == playFabId) 
+                {
+                    carteGasita = data;
+                    break; // Am găsit-o, ne oprim din căutat pentru acest ID
+                }
+            }
 
-                // 4. Fortam cartea sa isi actualizeze textele si imaginea
-                display.UpdateVisuals();
+            // 4. Dacă am găsit-o, o generăm pe masă
+            if (carteGasita != null)
+            {
+                GameObject newCard = Instantiate(cardPrefab, handArea);
+                CardDisplay display = newCard.GetComponent<CardDisplay>();
+
+                if (display != null)
+                {
+                    display.card = carteGasita;
+                    display.UpdateVisuals();
+                }
+            }
+            else
+            {
+                Debug.LogWarning("PlayFab a cerut cartea cu ID-ul: " + playFabId + ", dar nu există nicio carte cu acest ID intern în proiect!");
             }
         }
     }

@@ -2,6 +2,7 @@ using UnityEngine;
 using PlayFab;
 using PlayFab.ClientModels;
 using TMPro;
+using UnityEngine.SceneManagement;
 
 public class PlayFabAuthManager : MonoBehaviour
 {
@@ -83,20 +84,13 @@ public class PlayFabAuthManager : MonoBehaviour
     {
         isLoggedIn = true;
 
-        if (loginPanel != null)
-        {
-            loginPanel.SetActive(false); // Ascundem login-ul
-        }
-
-        if (logoutButton != null)
-        {
-            logoutButton.SetActive(true); // Afisam butonul de logout
-        }
-
         if (PlayFabInventoryManager.Instance != null)
         {
             PlayFabInventoryManager.Instance.GetCatalogAndInventory();
         }
+
+        // Load the next scene 
+        SceneManager.LoadScene(1);
     }
 
     // --- DECONECTARE (LOGOUT) ---
