@@ -203,11 +203,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 1721384103701135375, guid: 082355d40e8bbd0418513d895a707170, type: 3}
   m_PrefabInstance: {fileID: 2059914817}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &812630135 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8946059117604548893, guid: 082355d40e8bbd0418513d895a707170, type: 3}
-  m_PrefabInstance: {fileID: 2059914817}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1146043180
 GameObject:
   m_ObjectHideFlags: 0
@@ -304,7 +299,6 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 760354877}
-  - {fileID: 1368224021}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -353,11 +347,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1184319172}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f4d848634a427d549a32bfb8732eb4f4, type: 3}
+  m_Script: {fileID: 11500000, guid: 082b46bba0b04494a9e64eded8a684eb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HandManager
-  cardPrefab: {fileID: 812630135}
-  handArea: {fileID: 1368224021}
+  m_EditorClassIdentifier: Assembly-CSharp::DatabaseManager
+  allCardsInGame:
+  - {fileID: 11400000, guid: 75ffba3f2827ed545bccb0d62dbc6587, type: 2}
 --- !u!1 &1291607298
 GameObject:
   m_ObjectHideFlags: 0
@@ -389,68 +383,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1368224020
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1368224021}
-  - component: {fileID: 1368224022}
-  m_Layer: 5
-  m_Name: HandArea
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &1368224021
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1368224020}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1146043184}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 60.701965, y: -101.46123}
-  m_SizeDelta: {x: 221.4039, y: 68.6776}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1368224022
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1368224020}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.HorizontalLayoutGroup
-  m_Padding:
-    m_Left: 10
-    m_Right: 10
-    m_Top: 10
-    m_Bottom: 10
-  m_ChildAlignment: 4
-  m_Spacing: 10
-  m_ChildForceExpandWidth: 1
-  m_ChildForceExpandHeight: 1
-  m_ChildControlWidth: 0
-  m_ChildControlHeight: 0
-  m_ChildScaleWidth: 0
-  m_ChildScaleHeight: 0
-  m_ReverseArrangement: 0
 --- !u!1 &1740739984
 GameObject:
   m_ObjectHideFlags: 0

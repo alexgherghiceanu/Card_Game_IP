@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b31fd747e174c10428321b2b9b0ffc6b, type: 3}
-  m_Name: fat chud
+  m_Name: armored sea lion
   m_EditorClassIdentifier: Assembly-CSharp::CardData
-  cardID: 
-  cardName: fat chud
-  manaCost: 1
-  attack: 0
-  hp: 6
-  cardClass: chud
-  flavorText: 
+  cardID: 1001
+  cardName: Armored Sea Lion
+  manaCost: 4
+  attack: 4
+  hp: 5
+  cardClass: 
+  flavorText: Such a usless animal
   artwork: {fileID: 0}
