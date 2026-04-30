@@ -13,7 +13,7 @@ public class CloudCardStats
     public string Attack;
     public string Health;
     public string ManaCost;
-    public string Description;
+    public string flavorText;
 }
 
 [System.Serializable]
@@ -26,7 +26,7 @@ public struct CardMapping
 public class PlayFabInventoryManager : MonoBehaviour
 {
     public static PlayFabInventoryManager Instance;
-
+    public static event System.Action OnInventoryReady;
     [Header("1. What the player owns")]
     public List<string> ownedCards = new List<string>();
 
@@ -56,7 +56,7 @@ public class PlayFabInventoryManager : MonoBehaviour
         Debug.Log("Step 1: Downloading card stats from the cloud...");
         var request = new GetCatalogItemsRequest
         {
-            CatalogVersion = "Test_version" // Make sure this matches your catalog name on the website
+            CatalogVersion = "Cards" // Make sure this matches your catalog name on the website
         };
         PlayFabClientAPI.GetCatalogItems(request, OnCatalogSuccess, OnError);
     }
@@ -118,6 +118,7 @@ public class PlayFabInventoryManager : MonoBehaviour
                 Debug.LogWarning($"<color=yellow>[TEST CLOUD] Card: {itemId} has no stats in the cloud database!</color>");
             }
         }
+        OnInventoryReady?.Invoke();
     }
     
     private void OnError(PlayFabError error)
