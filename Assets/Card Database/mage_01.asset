@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b31fd747e174c10428321b2b9b0ffc6b, type: 3}
+  m_Name: mage_01
+  m_EditorClassIdentifier: Assembly-CSharp::CardData
+  cardID: mage_01
+  cardName: 'Fire Mage '
+  manaCost: 2
+  attack: 3
+  hp: 2
+  cardClass: Mage
+  flavorText: 'Basic test mage card.
+
+'
+  artwork: {fileID: 0}
