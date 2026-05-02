@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b31fd747e174c10428321b2b9b0ffc6b, type: 3}
   m_Name: corn chipicao
   m_EditorClassIdentifier: Assembly-CSharp::CardData
-  cardID: 
+  cardID: 1003
   cardName: corn chipicao
   manaCost: 3
   attack: 3

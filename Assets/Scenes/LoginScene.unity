@@ -2463,7 +2463,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayFabInventoryManager
   ownedCards: []
-  visualDatabase: []
+  visualDatabase:
+  - playFabItemId: 1001
+    cardPrefab: {fileID: 8946059117604548893, guid: 082355d40e8bbd0418513d895a707170, type: 3}
+  - playFabItemId: 1002
+    cardPrefab: {fileID: 8946059117604548893, guid: 082355d40e8bbd0418513d895a707170, type: 3}
 --- !u!1 &1802547393
 GameObject:
   m_ObjectHideFlags: 0
