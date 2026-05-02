@@ -1320,6 +1320,7 @@ GameObject:
   - component: {fileID: 964911541}
   - component: {fileID: 964911543}
   - component: {fileID: 964911542}
+  - component: {fileID: 964911544}
   m_Layer: 5
   m_Name: CollectionPanel
   m_TagString: Untagged
@@ -1385,6 +1386,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 964911540}
   m_CullTransparentMesh: 1
+--- !u!114 &964911544
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 964911540}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eee697732f0215d4884dd0a449acab73, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DeckbuilderDropZone
+  zoneType: 0
+  deckBuilderManager: {fileID: 364141052}
+  useHighlight: 1
 --- !u!1 &987365994
 GameObject:
   m_ObjectHideFlags: 0
@@ -1596,6 +1612,7 @@ GameObject:
   - component: {fileID: 1043624572}
   - component: {fileID: 1043624574}
   - component: {fileID: 1043624573}
+  - component: {fileID: 1043624575}
   m_Layer: 5
   m_Name: DeckPanel
   m_TagString: Untagged
@@ -1661,6 +1678,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1043624571}
   m_CullTransparentMesh: 1
+--- !u!114 &1043624575
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1043624571}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eee697732f0215d4884dd0a449acab73, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DeckbuilderDropZone
+  zoneType: 1
+  deckBuilderManager: {fileID: 364141052}
+  useHighlight: 1
 --- !u!1 &1048060212
 GameObject:
   m_ObjectHideFlags: 0
