@@ -23,7 +23,7 @@ public class HandManager : MonoBehaviour
     {
         if (PlayFabInventoryManager.Instance != null)
         {
-            List<string> jucatorDeck = PlayFabInventoryManager.Instance.ownedCards;
+            List<string> jucatorDeck = PlayFabInventoryManager.Instance.playerActiveDeck;
 
             if (jucatorDeck.Count > 0)
             {
