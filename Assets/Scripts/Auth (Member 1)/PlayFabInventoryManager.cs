@@ -33,6 +33,10 @@ public class PlayFabInventoryManager : MonoBehaviour
     [Header("2. Visual Database (Assigned by you in the Inspector)")]
     public List<CardMapping> visualDatabase;
 
+    [Header("3. Active Decks (Filled by the player in the Deck Builder)")]
+    public List<string> playerActiveDeck = new List<string>();
+    public List<string> enemyActiveDeck = new List<string>();
+
     // 3. The invisible dictionary with stats downloaded from the Cloud
     public Dictionary<string, CloudCardStats> cardStatsDatabase = new Dictionary<string, CloudCardStats>();
 
@@ -99,7 +103,7 @@ public class PlayFabInventoryManager : MonoBehaviour
         foreach (var item in result.Inventory)
         {
             // This condition automatically ignores your "test_deck" bundle!
-            if (item.ItemClass == "Card")
+            if (item.ItemClass == "Cards")
             {
                 ownedCards.Add(item.ItemId);
             }
@@ -118,6 +122,39 @@ public class PlayFabInventoryManager : MonoBehaviour
                 Debug.LogWarning($"<color=yellow>[TEST CLOUD] Card: {itemId} has no stats in the cloud database!</color>");
             }
         }
+        GetPlayerDeck();
+    }
+
+    private void GetPlayerDeck()
+    {
+        Debug.Log("Step 3: Downloading player's active deck...");
+        var request = new GetUserDataRequest()
+        {
+            Keys = new List<string> { "ActiveDeck" }
+        };
+        PlayFabClientAPI.GetUserData(request, OnGetDeckSuccess, OnError);
+    }
+
+    private void OnGetDeckSuccess(GetUserDataResult result)
+    {
+        playerActiveDeck.Clear();
+
+        if (result.Data != null && result.Data.ContainsKey("ActiveDeck"))
+        {
+            string deckData = result.Data["ActiveDeck"].Value;
+            string[] cardIds = deckData.Split(',');
+            playerActiveDeck.AddRange(cardIds);
+
+            Debug.Log($"<color=green>Step 3 Complete: Player deck loaded with {playerActiveDeck.Count} cards.</color>"); ;
+        }
+        else
+        {
+            Debug.LogWarning("Player has no active deck data in the cloud!");
+            playerActiveDeck = new List<string>(ownedCards);
+        }
+
+        enemyActiveDeck = new List<string>(playerActiveDeck);
+        Debug.Log($"Enemy deck set to mirror player's deck for testing. Enemy also has {enemyActiveDeck.Count} cards.");
         OnInventoryReady?.Invoke();
     }
     
@@ -149,5 +186,50 @@ public class PlayFabInventoryManager : MonoBehaviour
         return null;
     }
 
+    public void SendMatchResult(bool won)
+    {
+        if (won)
+        {
+            Debug.Log("Player won the match! Sending result to PlayFab...");
+            var request = new AddUserVirtualCurrencyRequest
+            {
+                VirtualCurrency = "CO",
+                Amount = 50
+            };
+            PlayFabClientAPI.AddUserVirtualCurrency(request, OnRewardSuccess, OnError);
+        } else
+        {
+            Debug.Log("Player lost the match. No rewards granted.");
+        }
+    }
 
+    private void OnRewardSuccess(ModifyUserVirtualCurrencyResult result)
+    {
+        Debug.Log($"Player rewarded! New CO balance: {result.Balance}");
+    }
+
+
+    public void BuyBoosterPack()
+    {
+        Debug.Log("Buying a pack");
+        var request = new PurchaseItemRequest
+        {
+            CatalogVersion = "Cards",
+            ItemId = "booster_pack",
+            VirtualCurrency = "CO",
+            Price = 100
+        };
+
+        PlayFabClientAPI.PurchaseItem(request, OnPackPurchased, OnBuyError);
+    }
+
+    private void OnPackPurchased(PurchaseItemResult result)
+    {
+        GetPlayerInventory();
+    }
+
+    private void OnBuyError(PlayFabError error)
+    {
+        Debug.Log(error.GenerateErrorReport());
+    }
 }
