@@ -75,8 +75,23 @@ public class PlayFabAuthManager : MonoBehaviour
 
     private void OnLoginSuccess(LoginResult result)
     {
-        UpdateMessage("Logged in successfully!", Color.green);
-        HandleLoginSuccess();
+        Debug.Log("Logare cu succes!");
+
+        // 1. Optional: Daca aveai un text de feedback pe ecran, il poti pune pe verde
+        if (messageText != null)
+        {
+            messageText.text = "Logged in! Loading game...";
+            messageText.color = Color.green;
+        }
+
+        // 2. Ii spunem Managerului de Inventar sa inceapa sa descarce cartile in fundal
+        if (PlayFabInventoryManager.Instance != null)
+        {
+            PlayFabInventoryManager.Instance.GetCatalogAndInventory();
+        }
+
+        // 3. INCARCAM SCENA URMATOARE (Asigura-te ca numele corespunde exact!)
+        SceneManager.LoadScene("MainMenuScene");
     }
 
     // --- LOGICA DE SUCCES COMBINATA ---
