@@ -89,7 +89,7 @@ public class PlayFabInventoryManager : MonoBehaviour
     }
 
     // --- STEP 2: DOWNLOAD THE PLAYER'S INVENTORY ---
-    private void GetPlayerInventory()
+    public void GetPlayerInventory()
     {
         Debug.Log("Step 2: Checking what cards the player owns...");
         var request = new GetUserInventoryRequest();
