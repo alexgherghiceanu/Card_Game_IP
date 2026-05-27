@@ -759,7 +759,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.40251565, g: 0.1405007, b: 0.1405007, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -872,11 +872,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d87af4fb248a4284ebd4544263d56082, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CardDisplay
-  card: {fileID: 11400000, guid: 75ffba3f2827ed545bccb0d62dbc6587, type: 2}
+  card: {fileID: 11400000, guid: 728bd04b635efbe438a5c34ace94cea5, type: 2}
   nameText: {fileID: 4685347650629625275}
   attackText: {fileID: 6383757674515407352}
   hpText: {fileID: 7877970724708602529}
   flavorText: {fileID: 3084186789937312867}
+  manaText: {fileID: 0}
   artworkImage: {fileID: 3112801402430067224}
 --- !u!114 &-4017983031469593545
 MonoBehaviour:

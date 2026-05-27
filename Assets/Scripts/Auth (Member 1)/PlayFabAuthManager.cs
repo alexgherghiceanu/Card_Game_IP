@@ -91,7 +91,7 @@ public class PlayFabAuthManager : MonoBehaviour
         }
 
         // 3. INCARCAM SCENA URMATOARE (Asigura-te ca numele corespunde exact!)
-        SceneManager.LoadScene("MainMenuScene");
+        SceneManager.LoadScene("testScene");
     }
 
     // --- LOGICA DE SUCCES COMBINATA ---
