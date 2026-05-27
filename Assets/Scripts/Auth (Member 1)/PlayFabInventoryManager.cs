@@ -103,7 +103,7 @@ public class PlayFabInventoryManager : MonoBehaviour
         foreach (var item in result.Inventory)
         {
             // This condition automatically ignores your "test_deck" bundle!
-            if (item.ItemClass == "Cards")
+            if (item.ItemClass == "Card")
             {
                 ownedCards.Add(item.ItemId);
             }
