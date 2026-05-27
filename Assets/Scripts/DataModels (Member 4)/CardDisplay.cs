@@ -13,6 +13,7 @@ public class CardDisplay : MonoBehaviour
     public TextMeshProUGUI attackText;
     public TextMeshProUGUI hpText;
     public TextMeshProUGUI flavorText;
+    public TextMeshProUGUI manaText;
     public Image artworkImage;
 
     // Aceasta functie este apelata DOAR de HandManager dupa ce are datele de la PlayFab
@@ -51,6 +52,11 @@ public class CardDisplay : MonoBehaviour
             {
                 // Fallback la textul local daca pe cloud e gol
                 flavorText.text = card.flavorText;
+            }
+
+            if (manaText != null)
+            {
+                manaText.text = cloudStats.ManaCost;
             }
         }
         else
