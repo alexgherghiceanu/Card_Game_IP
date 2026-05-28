@@ -868,7 +868,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6578635703391464837, guid: 7a4793d4e6dbc8a49bc95550e19db659, type: 3}
       propertyPath: m_text
-      value: Magazin
+      value: Shop
       objectReference: {fileID: 0}
     - target: {fileID: 6734220815168375314, guid: 7a4793d4e6dbc8a49bc95550e19db659, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.size
@@ -1026,7 +1026,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6578635703391464837, guid: 7a4793d4e6dbc8a49bc95550e19db659, type: 3}
       propertyPath: m_text
-      value: "Colec\u021Bie"
+      value: Deck Builder
       objectReference: {fileID: 0}
     - target: {fileID: 6734220815168375314, guid: 7a4793d4e6dbc8a49bc95550e19db659, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.size
