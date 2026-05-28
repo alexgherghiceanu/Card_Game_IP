@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class DeckbuilderCardButton : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+public class DeckbuilderCardButton : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
 {
     [Header("UI References")]
     public TextMeshProUGUI labelText;
@@ -19,52 +19,23 @@ public class DeckbuilderCardButton : MonoBehaviour, IBeginDragHandler, IDragHand
 
     public static DeckbuilderCardButton CurrentDraggedButton { get; private set; }
 
-    public CardData CardData
-    {
-        get { return cardData; }
-    }
-
-    public DeckBuilderManager DeckBuilderManager
-    {
-        get { return deckBuilderManager; }
-    }
-
-    public bool IsDeckCard
-    {
-        get { return isDeckCard; }
-    }
+    public CardData CardData { get { return cardData; } }
+    public DeckBuilderManager DeckBuilderManager { get { return deckBuilderManager; } }
+    public bool IsDeckCard { get { return isDeckCard; } }
 
     private void Awake()
     {
-        if (button == null)
-        {
-            button = GetComponent<Button>();
-        }
-
-        if (labelText == null)
-        {
-            labelText = GetComponentInChildren<TextMeshProUGUI>();
-        }
+        if (button == null) button = GetComponent<Button>();
+        if (labelText == null) labelText = GetComponentInChildren<TextMeshProUGUI>();
 
         canvasGroup = GetComponent<CanvasGroup>();
-
-        if (canvasGroup == null)
-        {
-            canvasGroup = gameObject.AddComponent<CanvasGroup>();
-        }
+        if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
 
         rootCanvas = GetComponentInParent<Canvas>();
     }
 
-    private void OnDisable()
-    {
-        CleanupDragVisuals();
-    }
-
-    private void OnDestroy()
-    {
-        CleanupDragVisuals();
-    }
+    private void OnDisable() { CleanupDragVisuals(); }
+    private void OnDestroy() { CleanupDragVisuals(); }
 
     public void Setup(CardData card, DeckBuilderManager manager, bool representsDeckCard, int copiesInDeck)
     {
@@ -74,19 +45,13 @@ public class DeckbuilderCardButton : MonoBehaviour, IBeginDragHandler, IDragHand
 
         UpdateLabel(copiesInDeck);
 
-        if (button != null)
-        {
-            button.onClick.RemoveAllListeners();
-            button.onClick.AddListener(OnButtonClicked);
-        }
+        // NU mai legam button.onClick - gestionam single/double click in OnPointerClick.
+        if (button != null) button.onClick.RemoveAllListeners();
     }
 
     private void UpdateLabel(int copiesInDeck)
     {
-        if (labelText == null)
-        {
-            return;
-        }
+        if (labelText == null) return;
 
         if (cardData == null)
         {
@@ -112,57 +77,52 @@ public class DeckbuilderCardButton : MonoBehaviour, IBeginDragHandler, IDragHand
                 cardName +
                 "\nClasa: " + cardClass +
                 " | Cost: " + cardData.manaCost +
-                "\nIn deck: " + copiesInDeck + "/2";
+                "\nIn deck: " + copiesInDeck + "/2  (dublu-click = detalii)";
         }
     }
 
-    private void OnButtonClicked()
+    // Single click = adauga/elimina ; Dublu click = preview cu prefab.
+    public void OnPointerClick(PointerEventData eventData)
     {
-        if (deckBuilderManager == null || cardData == null)
-        {
-            return;
-        }
+        if (cardData == null || deckBuilderManager == null) return;
 
-        if (isDeckCard)
+        if (eventData.clickCount >= 2)
         {
-            deckBuilderManager.RemoveCardFromDeck(cardData);
+            CancelInvoke(nameof(DoSingleClick));
+            deckBuilderManager.ShowCardPreview(cardData);
         }
         else
         {
-            deckBuilderManager.AddCardToDeck(cardData);
+            // asteptam putin: daca vine un al doilea click, e dublu (preview), nu adaugam.
+            CancelInvoke(nameof(DoSingleClick));
+            Invoke(nameof(DoSingleClick), 0.22f);
         }
+    }
+
+    private void DoSingleClick()
+    {
+        if (deckBuilderManager == null || cardData == null) return;
+
+        if (isDeckCard) deckBuilderManager.RemoveCardFromDeck(cardData);
+        else deckBuilderManager.AddCardToDeck(cardData);
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (cardData == null || deckBuilderManager == null)
-        {
-            return;
-        }
+        if (cardData == null || deckBuilderManager == null) return;
 
         CurrentDraggedButton = this;
-
-        if (canvasGroup != null)
-        {
-            canvasGroup.blocksRaycasts = false;
-        }
+        if (canvasGroup != null) canvasGroup.blocksRaycasts = false;
 
         CreateDragPreview(eventData.position);
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (dragPreview == null)
-        {
-            return;
-        }
+        if (dragPreview == null) return;
 
         RectTransform previewRectTransform = dragPreview.GetComponent<RectTransform>();
-
-        if (previewRectTransform != null)
-        {
-            previewRectTransform.position = eventData.position;
-        }
+        if (previewRectTransform != null) previewRectTransform.position = eventData.position;
     }
 
     public void OnEndDrag(PointerEventData eventData)
@@ -172,10 +132,7 @@ public class DeckbuilderCardButton : MonoBehaviour, IBeginDragHandler, IDragHand
 
     public void CleanupDragVisuals()
     {
-        if (canvasGroup != null)
-        {
-            canvasGroup.blocksRaycasts = true;
-        }
+        if (canvasGroup != null) canvasGroup.blocksRaycasts = true;
 
         if (dragPreview != null)
         {
@@ -183,25 +140,15 @@ public class DeckbuilderCardButton : MonoBehaviour, IBeginDragHandler, IDragHand
             dragPreview = null;
         }
 
-        if (CurrentDraggedButton == this)
-        {
-            CurrentDraggedButton = null;
-        }
+        if (CurrentDraggedButton == this) CurrentDraggedButton = null;
     }
 
     private void CreateDragPreview(Vector2 startPosition)
     {
         CleanupOldDragPreviews();
 
-        if (rootCanvas == null)
-        {
-            rootCanvas = GetComponentInParent<Canvas>();
-        }
-
-        if (rootCanvas == null)
-        {
-            return;
-        }
+        if (rootCanvas == null) rootCanvas = GetComponentInParent<Canvas>();
+        if (rootCanvas == null) return;
 
         dragPreview = new GameObject("DragPreview_" + cardData.cardName);
         dragPreview.transform.SetParent(rootCanvas.transform, false);
@@ -209,14 +156,8 @@ public class DeckbuilderCardButton : MonoBehaviour, IBeginDragHandler, IDragHand
         RectTransform previewRect = dragPreview.AddComponent<RectTransform>();
         RectTransform originalRect = GetComponent<RectTransform>();
 
-        if (originalRect != null)
-        {
-            previewRect.sizeDelta = originalRect.rect.size;
-        }
-        else
-        {
-            previewRect.sizeDelta = new Vector2(800f, 120f);
-        }
+        if (originalRect != null) previewRect.sizeDelta = originalRect.rect.size;
+        else previewRect.sizeDelta = new Vector2(800f, 120f);
 
         previewRect.position = startPosition;
 
@@ -227,12 +168,7 @@ public class DeckbuilderCardButton : MonoBehaviour, IBeginDragHandler, IDragHand
         {
             previewImage.sprite = originalImage.sprite;
             previewImage.type = originalImage.type;
-            previewImage.color = new Color(
-                originalImage.color.r,
-                originalImage.color.g,
-                originalImage.color.b,
-                0.65f
-            );
+            previewImage.color = new Color(originalImage.color.r, originalImage.color.g, originalImage.color.b, 0.65f);
         }
         else
         {
@@ -260,24 +196,13 @@ public class DeckbuilderCardButton : MonoBehaviour, IBeginDragHandler, IDragHand
 
     private void CleanupOldDragPreviews()
     {
-        if (rootCanvas == null)
-        {
-            rootCanvas = GetComponentInParent<Canvas>();
-        }
-
-        if (rootCanvas == null)
-        {
-            return;
-        }
+        if (rootCanvas == null) rootCanvas = GetComponentInParent<Canvas>();
+        if (rootCanvas == null) return;
 
         for (int i = rootCanvas.transform.childCount - 1; i >= 0; i--)
         {
             Transform child = rootCanvas.transform.GetChild(i);
-
-            if (child.name.StartsWith("DragPreview_"))
-            {
-                Destroy(child.gameObject);
-            }
+            if (child.name.StartsWith("DragPreview_")) Destroy(child.gameObject);
         }
     }
 }

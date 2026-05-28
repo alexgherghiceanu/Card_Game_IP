@@ -15,7 +15,7 @@ public class SceneNavigationManager : MonoBehaviour
 
     public void LoadCollection()
     {
-        SceneManager.LoadScene("CollectionScene");
+        SceneManager.LoadScene("DeckBuilderScene");
     }
 
     public void LoadStore()

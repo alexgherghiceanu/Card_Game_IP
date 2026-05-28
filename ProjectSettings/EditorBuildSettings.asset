@@ -23,5 +23,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/GameManagerTestScene.unity
     guid: c01d21cc151d14c499358ed771f1ac1c
+  - enabled: 1
+    path: Assets/Scenes/DeckbuilderScene.unity
+    guid: 677969a537889fe45b414aa161456ad8
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}
