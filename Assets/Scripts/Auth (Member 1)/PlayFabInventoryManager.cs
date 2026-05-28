@@ -14,6 +14,9 @@ public class CloudCardStats
     public string Health;
     public string ManaCost;
     public string flavorText;
+    public string DisplayName;
+    public string Class;
+    public string Status;
 }
 
 [System.Serializable]

@@ -1,327 +1,644 @@
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 
+/// <summary>
+/// MOTORUL DE JOC (clasa "Meci" din diagrama de clase).
+///
+/// Detine doi jucatori (tu + adversarul) sub forma de JucatorMeci si conduce
+/// intregul flux al unui meci: start, ture, tras carti, jucat carti, COMBAT
+/// (minion vs minion / minion vs erou) si CONDITIA DE VICTORIE.
+///
+/// Etapa 1: adversarul este controlat de un AI simplu (esteControlatDeAI = true),
+/// ca sa fie un joc complet jucabil de unul singur, imediat. In Etapa 3, AI-ul
+/// poate fi inlocuit cu input venit prin retea (PlayFab), fara a schimba modelul.
+///
+/// Compatibilitate: am pastrat toate campurile/metodele publice vechi
+/// (playerCurrentMana, StartGame, EndPlayerTurn, TryPlayCard, DrawCardFromButton...)
+/// ca wiring-ul existent din scena sa nu se strice.
+/// </summary>
 public class GameManager : MonoBehaviour
 {
     [Header("Game State")]
     public GameState currentState = GameState.NotStarted;
 
-    [Header("Player Resources")]
-    public int playerMaxMana = 0;
-    public int playerCurrentMana = 0;
+    [Header("Reguli")]
+    public int heroStartingHP = 30;
     public int maxManaLimit = 10;
-
-    [Header("Cards")]
-    public List<CardData> startingDeck = new List<CardData>();
-    public List<CardData> playerDeck = new List<CardData>();
-    public List<CardData> playerHand = new List<CardData>();
-    public List<RuntimeCardInstance> playerBoard = new List<RuntimeCardInstance>();
-
-    [Header("Rules")]
     public int startingHandSize = 3;
     public int cardsDrawnPerTurn = 1;
     public int maxHandSize = 10;
     public int maxBoardSize = 7;
 
-    [Header("Optional UI References")]
+    [Header("Adversar AI (Etapa 1)")]
+    public bool enableEnemyAI = true;
+    [Tooltip("Pauza (secunde) intre actiunile AI-ului, ca sa se vada ce face.")]
+    public float enemyActionDelay = 0.8f;
+
+    [Header("Debug")]
+    [Tooltip("Printeaza in Console ce statistici a citit din PlayFab pentru fiecare carte.")]
+    public bool debugLogCloudCards = true;
+
+    [Header("Deck de test (fallback daca nu exista deck din PlayFab)")]
+    public List<CardData> startingDeck = new List<CardData>();
+
+    // --- Cei doi jucatori ai meciului (sursa de adevar) ---
+    public JucatorMeci player = new JucatorMeci("Tu", 30);
+    public JucatorMeci enemy = new JucatorMeci("Adversar", 30);
+
+    // --- Oglinzi pentru compatibilitate cu codul/wiring-ul vechi ---
+    // Acestea pointeaza catre listele jucatorului uman.
+    [HideInInspector] public List<CardData> playerDeck = new List<CardData>();
+    [HideInInspector] public List<CardData> playerHand = new List<CardData>();
+    [HideInInspector] public List<RuntimeCardInstance> playerBoard = new List<RuntimeCardInstance>();
+    [HideInInspector] public int playerMaxMana = 0;
+    [HideInInspector] public int playerCurrentMana = 0;
+
+    [Header("UI - Jucator (optional)")]
     public TextMeshProUGUI manaText;
     public TextMeshProUGUI deckCountText;
     public TextMeshProUGUI handCountText;
     public TextMeshProUGUI stateText;
     public TextMeshProUGUI messageText;
+    public TextMeshProUGUI playerHpText;
 
-    [Header("Events For UI Integration")]
+    [Header("UI - Adversar (optional)")]
+    public TextMeshProUGUI enemyHpText;
+    public TextMeshProUGUI enemyManaText;
+    public TextMeshProUGUI enemyDeckCountText;
+    public TextMeshProUGUI enemyHandCountText;
+
+    [Header("Evenimente pentru integrare UI")]
     public UnityEvent onGameStarted;
     public UnityEvent onPlayerTurnStarted;
     public UnityEvent onEnemyTurnStarted;
     public UnityEvent onGameStateChanged;
     public UnityEvent onResourcesChanged;
     public UnityEvent onCardsChanged;
+    public UnityEvent onCombatResolved;   // NOU: dupa fiecare atac (pentru animatii/SFX)
+    public UnityEvent onGameEnded;         // NOU: cand un erou ajunge la 0 HP
+
+    private bool astepDatePlayFab = false;
 
     private void Start()
     {
-        if (startingDeck.Count > 0)
+        var inv = PlayFabInventoryManager.Instance;
+
+        if (inv != null)
         {
+            // Suntem intr-un flux cu PlayFab. Daca datele din cloud sunt deja
+            // descarcate, pornim direct. Altfel asteptam semnalul OnInventoryReady
+            // (exact ca HandManager-ul), ca sa nu pornim cu deck gol.
+            bool dateGata = (inv.cardStatsDatabase != null && inv.cardStatsDatabase.Count > 0);
+
+            if (dateGata)
+            {
+                StartGame();
+            }
+            else
+            {
+                astepDatePlayFab = true;
+                PlayFabInventoryManager.OnInventoryReady += OnPlayFabReady;
+                RefreshDebugUI();
+                ShowMessage("Astept datele cartilor din PlayFab...");
+            }
+        }
+        else if (startingDeck.Count > 0)
+        {
+            // Scena de test fara PlayFab: folosim deck-ul local.
             StartGame();
         }
         else
         {
             RefreshDebugUI();
-            ShowMessage("GameManager pregatit. Adauga carti in Starting Deck pentru test.");
+            ShowMessage("GameManager pregatit. Conecteaza PlayFab sau adauga carti in Starting Deck pentru test.");
         }
     }
 
+    private void OnPlayFabReady()
+    {
+        PlayFabInventoryManager.OnInventoryReady -= OnPlayFabReady;
+        astepDatePlayFab = false;
+        StartGame();
+    }
+
+    private void OnDisable()
+    {
+        if (astepDatePlayFab)
+        {
+            PlayFabInventoryManager.OnInventoryReady -= OnPlayFabReady;
+            astepDatePlayFab = false;
+        }
+    }
+
+    // ============================================================
+    //  START MECI  (= startMeci(j1, j2) din diagrama)
+    // ============================================================
+    [ContextMenu("0. Start / Restart meci")]
     public void StartGame()
     {
         currentState = GameState.NotStarted;
 
-        playerDeck = new List<CardData>(startingDeck);
-        playerHand.Clear();
-        playerBoard.Clear();
+        // Initializare jucatori
+        player = new JucatorMeci("Tu", heroStartingHP) { esteControlatDeAI = false };
+        enemy = new JucatorMeci("Adversar", heroStartingHP) { esteControlatDeAI = enableEnemyAI };
 
-        playerMaxMana = 0;
-        playerCurrentMana = 0;
+        // Incarcam deck-urile (PlayFab daca exista, altfel deck-ul de test)
+        IncarcaDeckuri();
 
-        ShuffleDeck(playerDeck);
+        ShuffleDeck(player.deck);
+        ShuffleDeck(enemy.deck);
 
+        // Mana initiala in mana ambilor jucatori
         for (int i = 0; i < startingHandSize; i++)
         {
-            DrawCard();
+            DrawCardFor(player, anuntaUI: false);
+            DrawCardFor(enemy, anuntaUI: false);
         }
 
+        SyncMirrors();
+
         currentState = GameState.PlayerTurn;
+        onGameStarted?.Invoke();
         StartPlayerTurn();
 
-        onGameStarted?.Invoke();
-        onGameStateChanged?.Invoke();
-
-        ShowMessage("Meci inceput.");
-        RefreshDebugUI();
+        ShowMessage("Meci inceput. Mult succes!");
     }
 
+    private void IncarcaDeckuri()
+    {
+        player.deck.Clear();
+        enemy.deck.Clear();
+
+        var inv = PlayFabInventoryManager.Instance;
+        bool cloudGata = inv != null && inv.cardStatsDatabase != null && inv.cardStatsDatabase.Count > 0;
+
+        if (cloudGata)
+        {
+            // Sursa de adevar = PlayFab. Construim cartile din statisticile din cloud.
+            player.deck = ConstruiesteDeckDinCloud(inv.playerActiveDeck);
+            enemy.deck = ConstruiesteDeckDinCloud(inv.enemyActiveDeck);
+
+            // Vs AI (Etapa 1): daca adversarul nu are un deck setat in PlayFab,
+            // ii dam o copie a deck-ului tau, ca AI-ul sa aiba cu ce juca.
+            if (enemy.deck.Count == 0 && inv.playerActiveDeck != null && inv.playerActiveDeck.Count > 0)
+                enemy.deck = ConstruiesteDeckDinCloud(inv.playerActiveDeck);
+
+            if (player.deck.Count == 0)
+                ShowMessage("ATENTIE: playerActiveDeck e gol. Deck-ul nu a fost incarcat din Deck Builder inainte de meci.");
+        }
+        else
+        {
+            // Fallback LOCAL doar pentru scena de test (fara PlayFab).
+            player.deck = new List<CardData>(startingDeck);
+            enemy.deck = new List<CardData>(startingDeck);
+        }
+    }
+
+    // Construieste un deck (lista de CardData) pornind de la o lista de itemId-uri din PlayFab.
+    private List<CardData> ConstruiesteDeckDinCloud(List<string> itemIds)
+    {
+        List<CardData> rezultat = new List<CardData>();
+        if (itemIds == null) return rezultat;
+
+        foreach (string id in itemIds)
+        {
+            CardData c = ConstruiesteCarteDinCloud(id);
+            if (c != null) rezultat.Add(c);
+        }
+        return rezultat;
+    }
+
+    // Construieste o instanta runtime de CardData din statisticile PlayFab (atac/HP/cost),
+    // imprumutand numai numele/poza/clasa din asset-ul local daca acesta exista.
+    // Nu modifica niciun asset salvat (foloseste o copie creata in memorie).
+    private CardData ConstruiesteCarteDinCloud(string itemId)
+    {
+        var inv = PlayFabInventoryManager.Instance;
+        if (inv == null || string.IsNullOrEmpty(itemId)) return null;
+
+        CloudCardStats stats;
+        if (!inv.cardStatsDatabase.TryGetValue(itemId, out stats) || stats == null)
+        {
+            Debug.LogWarning("[Meci] Nu am gasit statistici cloud pentru cartea: " + itemId);
+            return null;
+        }
+
+        // Copie runtime (NU asset salvat) - stats vin 100% din PlayFab
+        CardData rt = ScriptableObject.CreateInstance<CardData>();
+        rt.cardID = itemId;
+        rt.attack = ParseInt(stats.Attack);
+        rt.hp = ParseInt(stats.Health);
+        rt.manaCost = ParseInt(stats.ManaCost);
+        rt.flavorText = stats.flavorText;
+
+        // Numele, poza, clasa si statusul: din asset-ul local daca il gasim
+        // (poza nu poate veni din PlayFab - sprite-urile traiesc local in Unity).
+        CardData local = (DatabaseManager.Instance != null) ? DatabaseManager.Instance.GetCardByID(itemId) : null;
+        if (local != null)
+        {
+            rt.cardName = !string.IsNullOrWhiteSpace(local.cardName) ? local.cardName : itemId;
+            rt.artwork = local.artwork;
+            rt.cardClass = local.cardClass;
+            rt.status = local.status;
+        }
+        else
+        {
+            rt.cardName = itemId;
+        }
+
+        // Daca ai adaugat campurile Class / Status in Custom Data din PlayFab,
+        // ele au prioritate (sursa de adevar ramane cloud-ul).
+        if (!string.IsNullOrWhiteSpace(stats.Class)) rt.cardClass = stats.Class;
+        if (!string.IsNullOrWhiteSpace(stats.Status)) rt.status = stats.Status;
+
+        // Numele real vine din DisplayName-ul cartii din catalogul PlayFab.
+        if (!string.IsNullOrWhiteSpace(stats.DisplayName)) rt.cardName = stats.DisplayName;
+
+        if (debugLogCloudCards)
+        {
+            Debug.Log("[Meci] Construit din cloud: " + rt.cardName + " (" + itemId + ")" +
+                      " ATK=" + rt.attack + " HP=" + rt.hp + " MANA=" + rt.manaCost +
+                      " Class=" + rt.cardClass + " Status=" + rt.status);
+        }
+
+        return rt;
+    }
+
+    private int ParseInt(string s)
+    {
+        return int.TryParse(s, out int v) ? v : 0;
+    }
+
+    // ============================================================
+    //  TURE
+    // ============================================================
     public void StartPlayerTurn()
     {
         currentState = GameState.PlayerTurn;
 
-        IncreaseManaForNewTurn();
-        DrawCardsForTurn();
+        CresteManaPentruTuraNoua(player);
+        ReseteazaBoardPentruTuraNoua(player);
+        for (int i = 0; i < cardsDrawnPerTurn; i++) DrawCardFor(player);
 
-        foreach (RuntimeCardInstance cardInstance in playerBoard)
-        {
-            if (cardInstance != null)
-            {
-                cardInstance.hasAttackedThisTurn = false;
-            }
-        }
-
+        SyncMirrors();
         onPlayerTurnStarted?.Invoke();
         onGameStateChanged?.Invoke();
-
-        ShowMessage("A inceput tura jucatorului.");
+        ShowMessage("A inceput tura ta.");
         RefreshDebugUI();
     }
 
+    [ContextMenu("3. Termina tura (apoi joaca AI-ul)")]
     public void EndPlayerTurn()
     {
         if (currentState != GameState.PlayerTurn)
         {
-            ShowMessage("Nu poti termina tura deoarece nu este tura jucatorului.");
+            ShowMessage("Nu este tura ta.");
             return;
         }
 
         currentState = GameState.EnemyTurn;
-
         onEnemyTurnStarted?.Invoke();
         onGameStateChanged?.Invoke();
-
-        ShowMessage("Tura jucatorului s-a terminat. Urmeaza tura inamicului.");
+        ShowMessage("Tura adversarului...");
         RefreshDebugUI();
+
+        if (enemy.esteControlatDeAI)
+            StartCoroutine(RunEnemyTurnRoutine());
+        // Daca NU e AI (ex. multiplayer in Etapa 3), tura adversarului
+        // va fi condusa din afara prin apeluri echivalente.
     }
 
-    public void EndEnemyTurnAndStartPlayerTurn()
+    private void ReseteazaBoardPentruTuraNoua(JucatorMeci j)
     {
-        if (currentState != GameState.EnemyTurn)
+        foreach (var inst in j.board)
         {
-            ShowMessage("Nu poti porni tura jucatorului deoarece nu esti in EnemyTurn.");
-            return;
+            if (inst == null) continue;
+            inst.hasAttackedThisTurn = false;
+            inst.justSummoned = false; // creaturile invocate tura trecuta pot ataca acum
         }
-
-        StartPlayerTurn();
     }
 
-    public bool DrawCard()
+    private void CresteManaPentruTuraNoua(JucatorMeci j)
     {
-        if (playerDeck.Count <= 0)
+        if (j.manaMaxima < maxManaLimit) j.manaMaxima++;
+        j.manaCurenta = j.manaMaxima;
+        onResourcesChanged?.Invoke();
+    }
+
+    // ============================================================
+    //  TRAS CARTI
+    // ============================================================
+    public bool DrawCardFor(JucatorMeci j, bool anuntaUI = true)
+    {
+        if (j.deck.Count <= 0)
         {
-            ShowMessage("Deck-ul este gol. Nu mai poti trage carti.");
-            RefreshDebugUI();
+            if (anuntaUI) ShowMessage(j.numeJucator + ": deck gol, nu mai poti trage.");
+            return false;
+        }
+        if (j.mana.Count >= maxHandSize)
+        {
+            if (anuntaUI) ShowMessage(j.numeJucator + ": mana plina, cartea a fost arsa.");
+            j.deck.RemoveAt(0); // overdraw: cartea se pierde
             return false;
         }
 
-        if (playerHand.Count >= maxHandSize)
+        CardData drawn = j.deck[0];
+        j.deck.RemoveAt(0);
+        j.mana.Add(drawn);
+
+        if (anuntaUI)
         {
-            ShowMessage("Mana este plina. Cartea nu a fost trasa.");
-            RefreshDebugUI();
-            return false;
+            if (!j.esteControlatDeAI) ShowMessage("Ai tras: " + GetCardName(drawn));
+            onCardsChanged?.Invoke();
         }
-
-        CardData drawnCard = playerDeck[0];
-        playerDeck.RemoveAt(0);
-        playerHand.Add(drawnCard);
-
-        string cardName = GetCardName(drawnCard);
-        ShowMessage("Ai tras cartea: " + cardName);
-
-        onCardsChanged?.Invoke();
+        SyncMirrors();
         RefreshDebugUI();
-
         return true;
     }
 
+    // --- Compatibilitate: vechiul DrawCard() trage pentru jucatorul uman ---
+    public bool DrawCard() => DrawCardFor(player);
+    public void DrawCardFromButton() => DrawCardFor(player);
+
+    // ============================================================
+    //  JUCAT CARTI
+    // ============================================================
     public bool TryPlayCard(CardData card)
     {
-        if (card == null)
-        {
-            ShowMessage("Nu poti juca o carte nula.");
-            return false;
-        }
-
-        if (currentState != GameState.PlayerTurn)
-        {
-            ShowMessage("Nu poti juca o carte acum. Nu este tura jucatorului.");
-            return false;
-        }
-
-        if (!playerHand.Contains(card))
-        {
-            ShowMessage("Cartea nu se afla in mana jucatorului.");
-            return false;
-        }
-
-        if (playerBoard.Count >= maxBoardSize)
-        {
-            ShowMessage("Board-ul este plin. Nu mai poti plasa carti.");
-            return false;
-        }
-
-        if (!HasEnoughMana(card))
-        {
-            ShowMessage("Mana insuficienta pentru " + GetCardName(card) + ". Cost: " + card.manaCost + ", mana disponibila: " + playerCurrentMana + ".");
-            return false;
-        }
-
-        SpendMana(card.manaCost);
-
-        playerHand.Remove(card);
-        RuntimeCardInstance playedCard = new RuntimeCardInstance(card);
-        playerBoard.Add(playedCard);
-
-        ShowMessage("Ai jucat cartea: " + GetCardName(card));
-
-        onCardsChanged?.Invoke();
-        RefreshDebugUI();
-
-        return true;
+        return PlayCardFor(player, card, esteTuraValida: currentState == GameState.PlayerTurn);
     }
 
-    public void DrawCardFromButton()
+    private bool PlayCardFor(JucatorMeci j, CardData card, bool esteTuraValida)
     {
-        DrawCard();
+        if (card == null) { ShowMessage("Carte invalida."); return false; }
+        if (!esteTuraValida) { ShowMessage("Nu este tura corecta pentru a juca o carte."); return false; }
+        if (!j.mana.Contains(card)) { ShowMessage("Cartea nu e in mana."); return false; }
+        if (j.board.Count >= maxBoardSize) { ShowMessage("Board plin."); return false; }
+        if (!j.AreDestulaMana(card.manaCost))
+        {
+            if (!j.esteControlatDeAI)
+                ShowMessage("Mana insuficienta pentru " + GetCardName(card) +
+                            " (cost " + card.manaCost + ", ai " + j.manaCurenta + ").");
+            return false;
+        }
+
+        j.ConsumaMana(card.manaCost);
+        j.mana.Remove(card);
+        j.board.Add(new RuntimeCardInstance(card));
+
+        if (!j.esteControlatDeAI) ShowMessage("Ai jucat: " + GetCardName(card));
+        else ShowMessage("Adversarul a jucat: " + GetCardName(card));
+
+        SyncMirrors();
+        onCardsChanged?.Invoke();
+        onResourcesChanged?.Invoke();
+        RefreshDebugUI();
+        return true;
     }
 
     public void TryPlayFirstCardFromHand()
     {
-        if (playerHand.Count <= 0)
-        {
-            ShowMessage("Nu exista carti in mana.");
-            return;
-        }
-
-        TryPlayCard(playerHand[0]);
+        if (player.mana.Count <= 0) { ShowMessage("Nu ai carti in mana."); return; }
+        TryPlayCard(player.mana[0]);
     }
 
-    public bool HasEnoughMana(CardData card)
-    {
-        if (card == null)
-        {
-            return false;
-        }
+    // ============================================================
+    //  COMBAT  (= proceseazaAtac(...) din diagrama)
+    // ============================================================
 
-        return playerCurrentMana >= card.manaCost;
+    /// <summary>Atac minion vs minion. Returneaza true daca atacul a fost legal si rezolvat.</summary>
+    public bool ProceseazaAtac(RuntimeCardInstance atacator, RuntimeCardInstance tinta)
+    {
+        if (!ValideazaAtacator(atacator)) return false;
+        if (tinta == null || tinta.EsteMoarta()) { ShowMessage("Tinta invalida."); return false; }
+
+        // Schimb de damage (ambele entitati primesc atacul celeilalte)
+        int damageCatreTinta = atacator.Attack;
+        int damageCatreAtacator = tinta.Attack;
+
+        tinta.currentHP -= damageCatreTinta;
+        atacator.currentHP -= damageCatreAtacator;
+        atacator.hasAttackedThisTurn = true;
+
+        ShowMessage(atacator.GetCardName() + " ataca " + tinta.GetCardName() + ".");
+
+        EliminaCartiDistruse();
+        onCombatResolved?.Invoke();
+        SyncMirrors();
+        RefreshDebugUI();
+        VerificaConditieVictorie();
+        return true;
     }
 
-    public void SpendMana(int amount)
+    /// <summary>Atac minion vs EROU advers.</summary>
+    public bool ProceseazaAtacAsupraEroului(RuntimeCardInstance atacator, JucatorMeci eroultinta)
     {
-        playerCurrentMana -= amount;
+        if (!ValideazaAtacator(atacator)) return false;
+        if (eroultinta == null) return false;
 
-        if (playerCurrentMana < 0)
+        eroultinta.PrimesteDamage(atacator.Attack);
+        atacator.hasAttackedThisTurn = true;
+
+        ShowMessage(atacator.GetCardName() + " loveste eroul " + eroultinta.numeJucator +
+                    " pentru " + atacator.Attack + " damage.");
+
+        onCombatResolved?.Invoke();
+        SyncMirrors();
+        RefreshDebugUI();
+        VerificaConditieVictorie();
+        return true;
+    }
+
+    private bool ValideazaAtacator(RuntimeCardInstance atacator)
+    {
+        if (atacator == null) { ShowMessage("Atacator invalid."); return false; }
+        if (atacator.EsteImobil()) { ShowMessage(atacator.GetCardName() + " este Imobil si nu poate ataca."); return false; }
+        if (atacator.justSummoned) { ShowMessage(atacator.GetCardName() + " tocmai a fost invocat (nu poate ataca tura asta)."); return false; }
+        if (atacator.hasAttackedThisTurn) { ShowMessage(atacator.GetCardName() + " a atacat deja in tura asta."); return false; }
+        if (atacator.EsteMoarta()) return false;
+        return true;
+    }
+
+    /// <summary>Scoate de pe ambele table creaturile cu 0 HP.</summary>
+    public void EliminaCartiDistruse()
+    {
+        player.board.RemoveAll(c => c == null || c.EsteMoarta());
+        enemy.board.RemoveAll(c => c == null || c.EsteMoarta());
+        SyncMirrors();
+    }
+
+    /// <summary>Verifica daca un erou a ajuns la 0 HP si incheie meciul.</summary>
+    public bool VerificaConditieVictorie()
+    {
+        if (currentState == GameState.EndGame) return true;
+
+        if (!enemy.EsteInViata())
         {
-            playerCurrentMana = 0;
+            IncheieMeci(player);
+            return true;
         }
+        if (!player.EsteInViata())
+        {
+            IncheieMeci(enemy);
+            return true;
+        }
+        return false;
+    }
 
-        onResourcesChanged?.Invoke();
+    private void IncheieMeci(JucatorMeci castigator)
+    {
+        currentState = GameState.EndGame;
+        StopAllCoroutines();
+        ShowMessage(castigator == player ? "AI CASTIGAT!" : "Ai pierdut. Mai incearca!");
+        onGameStateChanged?.Invoke();
+        onGameEnded?.Invoke();
         RefreshDebugUI();
     }
 
-    private void IncreaseManaForNewTurn()
+    // ============================================================
+    //  AI ADVERSAR (Etapa 1)
+    // ============================================================
+    private IEnumerator RunEnemyTurnRoutine()
     {
-        if (playerMaxMana < maxManaLimit)
+        yield return new WaitForSeconds(enemyActionDelay);
+
+        CresteManaPentruTuraNoua(enemy);
+        ReseteazaBoardPentruTuraNoua(enemy);
+        DrawCardFor(enemy);
+        yield return new WaitForSeconds(enemyActionDelay);
+
+        // --- Faza de jucat carti: cele mai ieftine intai, cat permite mana/board ---
+        bool aJucatCeva = true;
+        while (aJucatCeva && currentState == GameState.EnemyTurn)
         {
-            playerMaxMana++;
+            aJucatCeva = false;
+            CardData deJucat = enemy.mana
+                .Where(c => c != null && c.manaCost <= enemy.manaCurenta)
+                .OrderBy(c => c.manaCost)
+                .FirstOrDefault();
+
+            if (deJucat != null && enemy.board.Count < maxBoardSize)
+            {
+                PlayCardFor(enemy, deJucat, esteTuraValida: true);
+                aJucatCeva = true;
+                yield return new WaitForSeconds(enemyActionDelay);
+            }
         }
 
-        playerCurrentMana = playerMaxMana;
-
-        onResourcesChanged?.Invoke();
-    }
-
-    private void DrawCardsForTurn()
-    {
-        for (int i = 0; i < cardsDrawnPerTurn; i++)
+        // --- Faza de atac ---
+        var atacatori = enemy.board.Where(m => m != null && m.PoateAtaca()).ToList();
+        foreach (var m in atacatori)
         {
-            DrawCard();
+            if (currentState == GameState.EndGame) yield break;
+            if (!m.PoateAtaca()) continue;
+
+            // Lethal pe erou?
+            if (m.Attack >= player.hpCurent)
+            {
+                ProceseazaAtacAsupraEroului(m, player);
+            }
+            else
+            {
+                // Schimb favorabil cu un minion advers (il omor si supravietuiesc)?
+                RuntimeCardInstance tinta = player.board
+                    .Where(pm => pm != null && m.Attack >= pm.currentHP && pm.Attack < m.currentHP)
+                    .OrderByDescending(pm => pm.Attack)
+                    .FirstOrDefault();
+
+                if (tinta != null) ProceseazaAtac(m, tinta);
+                else ProceseazaAtacAsupraEroului(m, player); // altfel, lovesc eroul
+            }
+
+            yield return new WaitForSeconds(enemyActionDelay);
+        }
+
+        if (currentState == GameState.EnemyTurn)
+        {
+            ShowMessage("Adversarul a terminat tura.");
+            StartPlayerTurn();
         }
     }
 
+    // ============================================================
+    //  METODE DE TEST (ca sa poti verifica motorul cu butoane,
+    //  inainte sa legam drag & drop-ul real in Etapa 2)
+    // ============================================================
+    [ContextMenu("1. Joaca cea mai ieftina carte din mana")]
+    public void DebugPlayCheapestCard()
+    {
+        var c = player.mana.Where(x => x != null && x.manaCost <= player.manaCurenta)
+                           .OrderBy(x => x.manaCost).FirstOrDefault();
+        if (c != null) TryPlayCard(c);
+        else ShowMessage("Nu poti juca nicio carte (mana?).");
+    }
+
+    [ContextMenu("2a. Primul minion al tau loveste EROUL advers")]
+    public void DebugPlayerFirstMinionAttacksEnemyHero()
+    {
+        var m = player.board.FirstOrDefault(x => x != null && x.PoateAtaca());
+        if (m != null) ProceseazaAtacAsupraEroului(m, enemy);
+        else ShowMessage("Niciun minion al tau nu poate ataca.");
+    }
+
+    [ContextMenu("2b. Primul minion al tau loveste primul MINION advers")]
+    public void DebugPlayerFirstMinionAttacksEnemyFirstMinion()
+    {
+        var m = player.board.FirstOrDefault(x => x != null && x.PoateAtaca());
+        var t = enemy.board.FirstOrDefault(x => x != null && !x.EsteMoarta());
+        if (m == null) { ShowMessage("Niciun minion al tau nu poate ataca."); return; }
+        if (t == null) { ShowMessage("Adversarul nu are minioni."); return; }
+        ProceseazaAtac(m, t);
+    }
+
+    // ============================================================
+    //  UTILITARE
+    // ============================================================
     private void ShuffleDeck(List<CardData> deck)
     {
         for (int i = 0; i < deck.Count; i++)
         {
-            int randomIndex = Random.Range(i, deck.Count);
-
-            CardData temporary = deck[i];
-            deck[i] = deck[randomIndex];
-            deck[randomIndex] = temporary;
+            int r = Random.Range(i, deck.Count);
+            (deck[i], deck[r]) = (deck[r], deck[i]);
         }
     }
 
     private string GetCardName(CardData card)
     {
-        if (card == null)
-        {
-            return "Unknown Card";
-        }
+        if (card == null) return "Unknown Card";
+        return !string.IsNullOrWhiteSpace(card.cardName) ? card.cardName : card.cardID;
+    }
 
-        if (!string.IsNullOrWhiteSpace(card.cardName))
-        {
-            return card.cardName;
-        }
-
-        return card.cardID;
+    // Tine sincronizate oglinzile vechi (playerDeck/Hand/Board, manele) cu JucatorMeci-ul.
+    private void SyncMirrors()
+    {
+        playerDeck = player.deck;
+        playerHand = player.mana;
+        playerBoard = player.board;
+        playerMaxMana = player.manaMaxima;
+        playerCurrentMana = player.manaCurenta;
     }
 
     private void RefreshDebugUI()
     {
-        if (manaText != null)
-        {
-            manaText.text = "Mana: " + playerCurrentMana + "/" + playerMaxMana;
-        }
+        if (manaText != null) manaText.text = "Mana: " + player.manaCurenta + "/" + player.manaMaxima;
+        if (deckCountText != null) deckCountText.text = "Deck: " + player.deck.Count;
+        if (handCountText != null) handCountText.text = "Hand: " + player.mana.Count;
+        if (stateText != null) stateText.text = "State: " + currentState;
+        if (playerHpText != null) playerHpText.text = "HP: " + player.hpCurent + "/" + player.hpMax;
 
-        if (deckCountText != null)
-        {
-            deckCountText.text = "Deck: " + playerDeck.Count;
-        }
-
-        if (handCountText != null)
-        {
-            handCountText.text = "Hand: " + playerHand.Count;
-        }
-
-        if (stateText != null)
-        {
-            stateText.text = "State: " + currentState;
-        }
+        if (enemyHpText != null) enemyHpText.text = "HP: " + enemy.hpCurent + "/" + enemy.hpMax;
+        if (enemyManaText != null) enemyManaText.text = "Mana: " + enemy.manaCurenta + "/" + enemy.manaMaxima;
+        if (enemyDeckCountText != null) enemyDeckCountText.text = "Deck: " + enemy.deck.Count;
+        if (enemyHandCountText != null) enemyHandCountText.text = "Hand: " + enemy.mana.Count;
     }
 
     private void ShowMessage(string message)
     {
-        if (messageText != null)
-        {
-            messageText.text = message;
-        }
-
-        Debug.Log("[GameManager] " + message);
+        if (messageText != null) messageText.text = message;
+        Debug.Log("[Meci] " + message);
     }
 }
