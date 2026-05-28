@@ -1,0 +1,5 @@
+;!function(){try { var e="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof global?global:"undefined"!=typeof window?window:"undefined"!=typeof self?self:{},n=(new e.Error).stack;n&&((e._debugIds|| (e._debugIds={}))[n]="74338799-abea-b739-a9d3-895e248009ec")}catch(e){}}();
+(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,630481,e=>{"use strict";var t=e.i(713627),r=e.i(429459),n=e.i(167815),c=e.i(145941),i=e.i(761531);e.s(["default",0,({error:e,reset:s})=>((0,r.useEffect)(()=>{(0,c.captureError)({name:i.ErrorEventName.FLOW_STATE_RENDER_ERROR,error:e})},[e]),(0,t.jsxs)("div",{className:"flex h-full flex-col items-center justify-center gap-4 p-8 text-center",children:[(0,t.jsx)("h2",{className:"text-lg font-semibold",children:"Something went wrong"}),(0,t.jsx)("p",{className:"text-muted-foreground text-sm",children:"An unexpected error occurred in Flow State. Please try again."}),(0,t.jsx)(n.Button,{variant:"secondary",onClick:s,children:"Try again"})]}))])}]);
+
+//# debugId=74338799-abea-b739-a9d3-895e248009ec
+//# sourceMappingURL=0qbs474r0yrxr.js.map

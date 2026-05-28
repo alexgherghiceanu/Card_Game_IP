@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b31fd747e174c10428321b2b9b0ffc6b, type: 3}
+  m_Name: Swift Scout
+  m_EditorClassIdentifier: Assembly-CSharp::CardData
+  cardID: 2001
+  cardName: 
+  manaCost: 0
+  attack: 0
+  hp: 0
+  cardClass: 
+  status: 
+  flavorText: 
+  artwork: {fileID: 4905268424131803053, guid: 29e8c821869f9394e8a254b8c2a8dcc5, type: 3}
