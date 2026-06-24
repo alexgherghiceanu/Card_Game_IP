@@ -3,7 +3,6 @@ using UnityEngine;
 using PlayFab;
 using PlayFab.ClientModels;
 using Unity.VisualScripting;
-using static UnityEditor.Progress;
 
 // --- STATS CLASS (Must exactly match Custom Data in PlayFab) ---
 [System.Serializable]
