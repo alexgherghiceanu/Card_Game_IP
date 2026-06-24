@@ -1,19 +1,17 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
 /// <summary>
-/// ETAPA 2: leaga LOGICA (GameManager) de VIZUAL.
+/// ETAPA 2: leaga LOGICA (GameManager) de VIZUAL + animatii de atac.
 ///
-/// Joaca o carte: TRAGI cartea din mana pe board-ul tau (drag and drop).
-///                (merge si pe click simplu pe carte, ca rezerva.)
+/// Joaca o carte: TRAGI cartea din mana pe board-ul tau (sau click pe ea).
 /// Atac minion : buton "Atac minion" -> click pe minionul tau -> click pe minionul inamic.
 /// Atac erou   : buton "Atac erou"   -> click pe minionul cu care ataci -> loveste eroul.
-/// Termina tura: buton "End Turn".
-///
-/// Afiseaza: mana ta (jos), board-ul tau, board-ul si MANA adversarului (sus).
+/// La atac: cartea atacatoare se repede spre tinta (lunge) + un mic screenshake.
 /// </summary>
 public class BattleView : MonoBehaviour
 {
@@ -33,11 +31,23 @@ public class BattleView : MonoBehaviour
     [Header("Evidentiere atacator selectat")]
     public Color culoareSelectat = new Color(1f, 0.92f, 0.4f, 1f);
 
+    [Header("Animatie atac")]
+    [Tooltip("Cat dureaza saritura cartii spre tinta (secunde).")]
+    public float lungeTime = 0.12f;
+    [Tooltip("Durata si intensitatea zguduiturii.")]
+    public float shakeDuration = 0.18f;
+    public float shakeMagnitude = 14f;
+
     public enum ModAtac { Nimic, Minion, Erou }
     private ModAtac modCurent = ModAtac.Nimic;
     private RuntimeCardInstance atacatorSelectat;
 
     private Canvas canvas;
+    private bool animeaza = false;
+
+    // Harti instanta -> obiectul vizual (pentru a sti ce carte sa animam)
+    private readonly Dictionary<RuntimeCardInstance, GameObject> goBoardPropriu = new Dictionary<RuntimeCardInstance, GameObject>();
+    private readonly Dictionary<RuntimeCardInstance, GameObject> goBoardInamic = new Dictionary<RuntimeCardInstance, GameObject>();
 
     private void OnEnable()
     {
@@ -70,9 +80,10 @@ public class BattleView : MonoBehaviour
         Redeseneaza();
     }
 
-    // =================== BUTOANE (de legat in UI) ===================
+    // =================== BUTOANE ===================
     public void EndTurn()
     {
+        if (animeaza) return;
         ReseteazaMod();
         if (gameManager != null) gameManager.EndPlayerTurn();
     }
@@ -102,15 +113,21 @@ public class BattleView : MonoBehaviour
     // =================== INTERACTIUNI ===================
     private void ClickCarteMana(CardData carte)
     {
+        if (animeaza) return;
         if (gameManager != null) gameManager.TryPlayCard(carte);
     }
 
     private void ClickMinionPropriu(RuntimeCardInstance inst)
     {
+        if (animeaza) return;
+
         if (modCurent == ModAtac.Erou)
         {
+            RuntimeCardInstance atacator = inst;
             ReseteazaMod();
-            gameManager.ProceseazaAtacAsupraEroului(inst, gameManager.enemy);
+            GameObject aGO = goBoardPropriu.ContainsKey(atacator) ? goBoardPropriu[atacator] : null;
+            StartCoroutine(AnimAtacApoiRezolva(aGO, PozitieErouInamic(),
+                () => gameManager.ProceseazaAtacAsupraEroului(atacator, gameManager.enemy)));
         }
         else if (modCurent == ModAtac.Minion)
         {
@@ -126,11 +143,20 @@ public class BattleView : MonoBehaviour
 
     private void ClickMinionInamic(RuntimeCardInstance inst)
     {
+        if (animeaza) return;
+
         if (modCurent == ModAtac.Minion && atacatorSelectat != null)
         {
             RuntimeCardInstance atacator = atacatorSelectat;
+            RuntimeCardInstance tinta = inst;
             ReseteazaMod();
-            gameManager.ProceseazaAtac(atacator, inst);
+
+            GameObject aGO = goBoardPropriu.ContainsKey(atacator) ? goBoardPropriu[atacator] : null;
+            GameObject tGO = goBoardInamic.ContainsKey(tinta) ? goBoardInamic[tinta] : null;
+            Vector3 pozTinta = (tGO != null) ? tGO.transform.position : PozitieErouInamic();
+
+            StartCoroutine(AnimAtacApoiRezolva(aGO, pozTinta,
+                () => gameManager.ProceseazaAtac(atacator, tinta)));
         }
         else
         {
@@ -138,17 +164,67 @@ public class BattleView : MonoBehaviour
         }
     }
 
-    // Apelat de BattleDragSource cand dai drumul cartii din mana.
-    public void RezolvaDropJucat(BattleDragSource sursa, Vector2 pozitieEcran)
+    private Vector3 PozitieErouInamic()
     {
-        if (gameManager != null && sursa != null && sursa.carteMana != null)
+        if (enemyBoardArea != null) return enemyBoardArea.position;
+        return new Vector3(Screen.width * 0.5f, Screen.height * 0.85f, 0f);
+    }
+
+    // =================== ANIMATIE ===================
+    private IEnumerator AnimAtacApoiRezolva(GameObject atacatorGO, Vector3 pozTinta, Action rezolva)
+    {
+        animeaza = true;
+
+        // 1. Saritura cartii spre tinta
+        if (atacatorGO != null)
         {
-            if (PesteRect(playerBoardArea, pozitieEcran))
-                gameManager.TryPlayCard(sursa.carteMana);
+            if (canvas != null) atacatorGO.transform.SetParent(canvas.transform, true);
+            atacatorGO.transform.SetAsLastSibling();
+
+            Vector3 start = atacatorGO.transform.position;
+            Vector3 varf = Vector3.Lerp(start, pozTinta, 0.6f);
+            float t = 0f;
+            while (t < lungeTime && atacatorGO != null)
+            {
+                t += Time.deltaTime;
+                atacatorGO.transform.position = Vector3.Lerp(start, varf, t / lungeTime);
+                yield return null;
+            }
         }
 
-        if (sursa != null) Destroy(sursa.gameObject);
-        Redeseneaza();
+        // 2. Zguduitura la impact
+        yield return StartCoroutine(ScreenShake());
+
+        // 3. Curatam cartea animata si rezolvam efectul (damage + redraw)
+        if (atacatorGO != null) Destroy(atacatorGO);
+        rezolva?.Invoke();
+
+        animeaza = false;
+    }
+
+    private IEnumerator ScreenShake()
+    {
+        List<RectTransform> targinte = new List<RectTransform>();
+        if (playerBoardArea is RectTransform pb) targinte.Add(pb);
+        if (enemyBoardArea is RectTransform eb) targinte.Add(eb);
+
+        Dictionary<RectTransform, Vector2> origini = new Dictionary<RectTransform, Vector2>();
+        foreach (var rt in targinte) origini[rt] = rt.anchoredPosition;
+
+        float t = 0f;
+        while (t < shakeDuration)
+        {
+            t += Time.deltaTime;
+            float mag = shakeMagnitude * (1f - t / shakeDuration);
+            foreach (var rt in targinte)
+            {
+                Vector2 off = new Vector2(UnityEngine.Random.Range(-mag, mag), UnityEngine.Random.Range(-mag, mag));
+                rt.anchoredPosition = origini[rt] + off;
+            }
+            yield return null;
+        }
+
+        foreach (var rt in targinte) rt.anchoredPosition = origini[rt];
     }
 
     // =================== DESENARE ===================
@@ -160,8 +236,9 @@ public class BattleView : MonoBehaviour
         GolesteZona(playerBoardArea);
         GolesteZona(enemyHandArea);
         GolesteZona(enemyBoardArea);
+        goBoardPropriu.Clear();
+        goBoardInamic.Clear();
 
-        // --- Mana ta (jos): drag pe board = joaca; click = joaca (rezerva) ---
         if (playerHandArea != null)
         {
             foreach (CardData c in gameManager.player.mana)
@@ -173,7 +250,6 @@ public class BattleView : MonoBehaviour
             }
         }
 
-        // --- Board-ul tau: click = selecteaza / ataca ---
         if (playerBoardArea != null)
         {
             foreach (RuntimeCardInstance inst in gameManager.player.board)
@@ -182,10 +258,10 @@ public class BattleView : MonoBehaviour
                 GameObject go = SpawneazaCarte(playerBoardArea, cd => cd.SetupFromInstance(captura));
                 if (captura == atacatorSelectat) Evidentiaza(go);
                 AdaugaClick(go, () => ClickMinionPropriu(captura));
+                goBoardPropriu[captura] = go;
             }
         }
 
-        // --- Mana adversarului (sus), exact ca la player ---
         if (enemyHandArea != null)
         {
             foreach (CardData c in gameManager.enemy.mana)
@@ -195,7 +271,6 @@ public class BattleView : MonoBehaviour
             }
         }
 
-        // --- Board-ul adversarului (sus): click = tinta ---
         if (enemyBoardArea != null)
         {
             foreach (RuntimeCardInstance inst in gameManager.enemy.board)
@@ -203,6 +278,7 @@ public class BattleView : MonoBehaviour
                 RuntimeCardInstance captura = inst;
                 GameObject go = SpawneazaCarte(enemyBoardArea, cd => cd.SetupFromInstance(captura));
                 AdaugaClick(go, () => ClickMinionInamic(captura));
+                goBoardInamic[captura] = go;
             }
         }
     }
@@ -214,7 +290,7 @@ public class BattleView : MonoBehaviour
         go.SetActive(true);
 
         CardDragNDrop oldDrag = go.GetComponent<CardDragNDrop>();
-        if (oldDrag != null) oldDrag.enabled = false; // dezactivam drag-ul vechi (vizual)
+        if (oldDrag != null) oldDrag.enabled = false;
 
         CardDisplay disp = go.GetComponent<CardDisplay>();
         if (disp == null) disp = go.GetComponentInChildren<CardDisplay>();
@@ -268,6 +344,19 @@ public class BattleView : MonoBehaviour
     }
 
     public Canvas GetCanvas() { return canvas; }
+
+    public void RezolvaDropJucat(BattleDragSource sursa, Vector2 pozitieEcran)
+    {
+        if (animeaza) { if (sursa != null) Destroy(sursa.gameObject); Redeseneaza(); return; }
+
+        if (gameManager != null && sursa != null && sursa.carteMana != null)
+        {
+            if (PesteRect(playerBoardArea, pozitieEcran))
+                gameManager.TryPlayCard(sursa.carteMana);
+        }
+        if (sursa != null) Destroy(sursa.gameObject);
+        Redeseneaza();
+    }
 
     private bool PesteRect(Transform zona, Vector2 pozitieEcran)
     {
